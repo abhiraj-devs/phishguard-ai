@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing URL Detector (Powered by 235k Dataset)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-primary: #ec4899;
+            --accent-hover: #db2777;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 85% 50%, rgba(236, 72, 153, 0.15), transparent 25%),
+                radial-gradient(circle at 15% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 650px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #f472b6, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 2.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .dataset-badge {
+            display: inline-block;
+            background: rgba(236, 72, 153, 0.2);
+            color: #fbcfe8;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 1.2rem 1.5rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            color: var(--text-main);
+            font-size: 1.1rem;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.2), inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        button {
+            width: 100%;
+            padding: 1.2rem;
+            background: linear-gradient(135deg, var(--accent-primary), #9333ea);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 15px -3px rgba(236, 72, 153, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 20px -3px rgba(236, 72, 153, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+
+        /* Loading Spinner */
+        .loader {
+            display: none;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Results Card */
+        #result-card {
+            margin-top: 2rem;
+            padding: 2rem;
+            border-radius: 16px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--glass-border);
+            display: none;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .status-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        .phishing-status {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .prob-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+
+        .prob-bar {
+            height: 100%;
+            width: 0%;
+            border-radius: 4px;
+            transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .features-toggle {
+            margin-top: 1.5rem;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: underline;
+            box-shadow: none;
+            width: auto;
+            padding: 0;
+        }
+        .features-toggle:hover { transform: none; box-shadow: none; color: white;}
+
+        .features-list {
+            display: none;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: rgba(0,0,0,0.3);
+            padding: 1rem;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .features-list pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div style="text-align: center;">
+            <div class="dataset-badge">Trained on massive 235k dataset</div>
+        </div>
+        <h1>PhishGuard AI</h1>
+        <p class="subtitle">AI-powered URL threat detection API</p>
+
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="Enter ANY URL manually (e.g., https://example.com)" autocomplete="off">
+        </div>
+
+        <button id="scanBtn" onclick="analyzeUrl()">
+            <span id="btnText">Scan URL</span>
+            <div id="btnLoader" class="loader"></div>
+        </button>
+
+        <div id="result-card">
+            <div class="result-header">
+                <div id="statusDot" class="status-dot"></div>
+                <div id="statusText" class="phishing-status">Analyzing...</div>
+            </div>
+            
+            <p id="probText" style="color: var(--text-muted); margin-bottom: 0.5rem;"></p>
+            
+            <div class="prob-bar-container">
+                <div id="probBar" class="prob-bar"></div>
+            </div>
+
+            <button class="features-toggle" onclick="toggleFeatures()">View Extracted Features</button>
+            <div id="featuresList" class="features-list">
+                <pre id="featuresData"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeUrl() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (!url) return;
+
+            // UI State: Loading
+            document.getElementById('btnText').style.display = 'none';
+            document.getElementById('btnLoader').style.display = 'block';
+            document.getElementById('result-card').style.display = 'none';
+            document.getElementById('scanBtn').disabled = true;
+
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+                if(response.ok) {
+                    showResult(data);
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch (error) {
+                alert("Failed to connect to the model API.");
+            } finally {
+                // UI State: Restore
+                document.getElementById('btnText').style.display = 'block';
+                document.getElementById('btnLoader').style.display = 'none';
+                document.getElementById('scanBtn').disabled = false;
+            }
+        }
+
+        function showResult(data) {
+            const resultCard = document.getElementById('result-card');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const probText = document.getElementById('probText');
+            const probBar = document.getElementById('probBar');
+            const featuresData = document.getElementById('featuresData');
+
+            resultCard.style.display = 'block';
+            
+            // Set values based on prediction
+            const prob = data.phishing_probability;
+            
+            if (data.is_phishing) {
+                statusDot.style.background = 'var(--danger)';
+                statusText.style.color = 'var(--danger)';
+                statusText.textContent = 'Predicted: Phishing';
+                probBar.style.background = 'var(--danger)';
+            } else {
+                statusDot.style.background = 'var(--success)';
+                statusText.style.color = 'var(--success)';
+                statusText.textContent = 'Predicted: Legitimate';
+                probBar.style.background = 'var(--success)';
+            }
+
+            probText.innerHTML = `Probability of being a phishing attack: <strong style="color: white">${prob}%</strong>`;
+            
+            // Trigger animation
+            setTimeout(() => {
+                probBar.style.width = prob + '%';
+            }, 50);
+
+            // Populate features
+            featuresData.textContent = JSON.stringify(data.features, null, 2);
+        }
+
+        function toggleFeatures() {
+            const featuresList = document.getElementById('featuresList');
+            if (featuresList.style.display === 'none' || featuresList.style.display === '') {
+                featuresList.style.display = 'block';
+            } else {
+                featuresList.style.display = 'none';
+            }
+        }
+        
+        // Allow pressing Enter to submit
+        document.getElementById('urlInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') analyzeUrl();
+        });
+    </script>
+</body>
+</html>
